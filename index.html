@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billiard Timer</title>
+<style>
+    .cost {
+        font-size: 40px;
+    }
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f2f2f2;
+    }
+    .timer-container {
+        width: calc(33.33% - 20px);
+        margin: 10px;
+        text-align: center;
+        border: 2px solid #333; /* Add border to timer square */
+        border-radius: 10px;
+        padding: 20px;
+        position: relative;
+        box-sizing: border-box; /* Include padding and border in the width */
+    }
+    .timer {
+        font-size: 32px;
+        margin-bottom: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+    }
+    .btn {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        margin: 5px;
+    }
+    .btn-start {
+        background-color: #008000;
+        color: #fff;
+    }
+    .btn-stop {
+        background-color: #FF4500;
+        color: #fff;
+    }
+    .btn-reset {
+        background-color: #4169E1;
+        color: #fff;
+    }
+    .timer-number {
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: bold;
+        font-size: 24px; /* Increase font size for the timer number */
+    }
+    .billiards,
+    .snooker,
+    .B {
+        font-size: 48px; /* Increase font size for "Billiards" */
+        font-weight: bold;
+    }
+    .price-select {
+        height: 50px;
+        width: 300px; /* Enlarge the box for "0.05 per minute" */
+    }
+
+    /* Adjust input box size */
+    input[type="number"] {
+        width: 150px; /* Adjust as needed */
+        padding: 10px; /* Add padding */
+        font-size: 16px; /* Adjust font size */
+    }
+
+    @media screen and (max-width: 768px) {
+        .timer-container {
+            width: calc(50% - 20px);
+        }
+    }
+
+    @media screen and (max-width: 480px) {
+        .timer-container {
+            width: calc(100% - 20px);
+        }
+    }
+
+    .alert {
+        border-color: red;
+        box-shadow: 0 0 10px red; /* Add a red glow effect */
+    }
+</style>
+</head>
+<body>
+<script>
+    let timers = [];
+
+    function startTimer(index) {
+        // Reset alert flag when starting the timer
+        timers[index].alert = false;
+        let stopTime = parseFloat(document.getElementById('stop-time' + index).value);
+        let stopMilliseconds = stopTime * 60000; // Convert minutes to milliseconds
+        timers[index].startTime = new Date().getTime();
+        updateTimer(index, stopMilliseconds);
+        document.getElementById('stop-btn' + index).disabled = false;
+        document.getElementById('start-btn' + index).disabled = true;
+        document.getElementById('reset-btn' + index).disabled = true;
+    }
+
+    function stopTimer(index) {
+        clearInterval(timers[index].timerInterval);
+        calculateCost(index);
+        // Set alert flag if the timer was stopped due to reaching the stop time
+        if (document.getElementById('timer-container' + index).classList.contains('alert')) {
+            timers[index].alert = true;
+        }
+        document.getElementById('stop-btn' + index).disabled = true;
+        document.getElementById('start-btn' + index).disabled = false;
+        document.getElementById('reset-btn' + index).disabled = false;
+
+        // Stop the alarm sound
+        document.getElementById(`alarmSound${index}`).pause();
+        document.getElementById(`alarmSound${index}`).currentTime = 0;
+    }
+
+    function updateTimer(index, stopMilliseconds) {
+        let alertInterval;
+        timers[index].timerInterval = setInterval(function() {
+            let elapsedTime = new Date().getTime() - timers[index].startTime;
+            let minutes = Math.floor(elapsedTime / (1000 * 60));
+            let seconds = Math.floor((elapsedTime / 1000) % 60); // Calculate elapsed seconds
+            document.getElementById('timer' + index).innerText = formatTime(minutes) + ":" + formatTime(seconds);
+            
+            if (elapsedTime >= stopMilliseconds && stopMilliseconds !== 0) {
+                stopTimer(index);
+                let timerContainer = document.getElementById('timer-container' + index);
+                timerContainer.classList.add('alert'); // Add alert class
+                // Toggle the alert class every 500 milliseconds for 5 seconds (10 times)
+                alertInterval = setInterval(function() {
+                    timerContainer.classList.toggle('alert');
+                }, 500);
+                setTimeout(function() {
+                    clearInterval(alertInterval);
+                }, 5000); // Stop toggling after 5 seconds
+                
+                // Play the alarm sound
+                document.getElementById(`alarmSound${index}`).play();
+            }
+        }, 1000);
+    }
+
+    function formatTime(time) {
+        return (time < 10 ? "0" : "") + time;
+    }
+
+    function calculateCost(index) {
+        let totalSeconds = Math.floor((new Date().getTime() - timers[index].startTime) / 1000);
+        let ratePerSecond = parseFloat(document.getElementById('price-select' + index).value);
+        let cost = totalSeconds * ratePerSecond;
+        document.getElementById('cost' + index).innerText = "Cost: $" + cost.toFixed(2);
+    }
+
+    function resetTimer(index) {
+        clearInterval(timers[index].timerInterval);
+        document.getElementById('timer' + index).innerText = "00:00";
+        document.getElementById('stop-btn' + index).disabled = true;
+        document.getElementById('start-btn' + index).disabled = false;
+        document.getElementById('reset-btn' + index).disabled = false;
+        
+        // Reset timer data and alert flag
+        timers[index] = { startTime: 0, timerInterval: null, alert: false };
+
+        // Reset price select to default value
+        document.getElementById('price-select' + index).value = "0.00083";
+
+        // Reset cost display to default value
+        document.getElementById('cost' + index).innerText = "Cost: $0.00";
+
+        // Remove alert class
+        document.getElementById('timer-container' + index).classList.remove('alert');
+
+        // Check if timer was in alert state before resetting
+        if (timers[index].alert) {
+            // Manually trigger the alert state again
+            document.getElementById('timer-container' + index).classList.add('alert');
+        }
+
+        // Stop the alarm sound
+        document.getElementById(`alarmSound${index}`).pause();
+        document.getElementById(`alarmSound${index}`).currentTime = 0;
+    }
+
+    function addTimer(section, number) {
+        let index = timers.length;
+        timers.push({ startTime: 0, timerInterval: null, alert: false });
+
+        let timerContainer = document.createElement('div');
+        timerContainer.classList.add('timer-container');
+        timerContainer.setAttribute('id', 'timer-container' + index); // Set unique ID for each timer container
+        timerContainer.innerHTML = `
+            <div class="timer-number">${section}${number}</div>
+            <div class="${section}">${section.toUpperCase()} ${number}</div>
+            <div class="timer" id="timer${index}">00:00</div>
+            <input type="number" id="stop-time${index}" placeholder="Stop at (minutes)">
+            <select id="table-select${index}">
+                <option value="1">Table 1</option>
+                <!-- Add more options for tables if needed -->
+            </select>
+            <select id="price-select${index}" class="price-select">
+                <option value="0.00083">$0.05 per minute</option>
+                <option value="0.00117">$0.07 per minute</option>
+                <option value="0.00133">$0.08 per minute</option>
+            </select>
+            <br>
+            <button class="btn btn-start" id="start-btn${index}" onclick="startTimer(${index})">Start</button>
+            <button class="btn btn-stop" id="stop-btn${index}" onclick="stopTimer(${index})" disabled>Stop</button>
+            <button class="btn btn-reset" id="reset-btn${index}" onclick="resetTimer(${index})">Reset</button>
+            <div class="cost" id="cost${index}"></div>
+            <audio id="alarmSound${index}" src="Alarm.mp3" loop></audio>
+        `;
+
+        document.body.appendChild(timerContainer);
+    }
+
+    window.addEventListener('load', function() {
+        // Adding B1 to B6 timers
+        for (let i = 1; i <= 6; i++) {
+            addTimer('B', i);
+        }
+        // Adding C1 to C3 timers
+        for (let i = 1; i <= 3; i++) {
+            addTimer('C', i);
+        }
+        // Adding TT, BB1, and BB2 timers
+        addTimer('TT', '');
+        addTimer('BB', '1');
+        addTimer('BB', '2');
+    });
+</script>
+</body>
+</html>
